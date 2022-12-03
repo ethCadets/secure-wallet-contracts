@@ -5,8 +5,10 @@ pragma solidity ^0.8.12;
 /* solhint-disable no-inline-assembly */
 /* solhint-disable reason-string */
 
+import "@account-abstraction/contracts/core/EntryPoint.sol";
 import "@account-abstraction/contracts/core/BaseAccount.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./mixins/DeadManSwitch.sol";
 import "./mixins/SocialRecovery.sol";
 import "./mixins/SessionManagement.sol";
@@ -17,7 +19,13 @@ import "./mixins/SessionManagement.sol";
  *  has execute, eth handling methods
  *  has a single signer that can send requests through the entryPoint.
  */
-contract InfinityAccount is BaseAccount, DeadManSwitch, SocialRecovery, SessionManagement {
+contract InfinityWallet is
+    Initializable,
+    BaseAccount,
+    DeadManSwitch,
+    SocialRecovery,
+    SessionManagement
+{
     using ECDSA for bytes32;
 
     //explicit sizes of nonce, to fit a single storage cell with "owner"
@@ -43,9 +51,17 @@ contract InfinityAccount is BaseAccount, DeadManSwitch, SocialRecovery, SessionM
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    constructor(IEntryPoint anEntryPoint, address anOwner) DeadManSwitch() {
+    constructor() {
+        // _disableInitializers();
+    }
+
+    function initialize(IEntryPoint anEntryPoint, address anOwner)
+        public
+        initializer
+    {
         _entryPoint = anEntryPoint;
         owner = anOwner;
+        DeadManSwitch__init();
     }
 
     modifier onlyOwner() {
@@ -155,7 +171,12 @@ contract InfinityAccount is BaseAccount, DeadManSwitch, SocialRecovery, SessionM
         //ignore signature mismatch of from==ZERO_ADDRESS (for eth_callUserOp validation purposes)
         // solhint-disable-next-line avoid-tx-origin
         require(
-            owner == hash.recover(userOp.signature) || tx.origin == address(0) || _canCall(hash.recover(userOp.signature), address(bytes20(userOp.callData))),
+            owner == hash.recover(userOp.signature) ||
+                tx.origin == address(0) ||
+                _canCall(
+                    hash.recover(userOp.signature),
+                    address(bytes20(userOp.callData))
+                ),
             "account: wrong signature"
         );
         return 0;
@@ -236,13 +257,15 @@ contract InfinityAccount is BaseAccount, DeadManSwitch, SocialRecovery, SessionM
 
     // Session Management
 
-    function createSession(address sessionAddress, address target, uint256 blockNumber) external {
+    function createSession(
+        address sessionAddress,
+        address target,
+        uint256 blockNumber
+    ) external {
         _createSession(blockNumber, target, sessionAddress);
     }
-
 
     function deactivateSession(address sessionAddress) external {
         _deactivateSession(sessionAddress);
     }
 }
-

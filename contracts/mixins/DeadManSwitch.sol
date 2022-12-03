@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.12;
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract DeadManSwitch {
+contract DeadManSwitch is Initializable{
     event Switch(uint256 switchTriggerBlockDiff, address switchAccount);
     event SwitchRequest(uint256 switchRequestBlockNumber);
 
@@ -10,11 +11,10 @@ contract DeadManSwitch {
     bool public switchActivated;
     address public switchAccount;
 
-    constructor() {
+
+    function DeadManSwitch__init() internal {
         switchRequestBlockNumber = ~uint256(0);
     }
-
-
 
     modifier ifSwitchActivated() {
         require(switchActivated);
@@ -33,7 +33,10 @@ contract DeadManSwitch {
 
     function _onlySwitchAccount() internal view {
         //directly from EOA owner, or through the entryPoint (which gets redirected through execFromEntryPoint)
-        require(msg.sender == switchAccount && msg.sender == address(this), "only switch account");
+        require(
+            msg.sender == switchAccount && msg.sender == address(this),
+            "only switch account"
+        );
     }
 
     modifier _canSwitchActivate() {

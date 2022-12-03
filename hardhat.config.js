@@ -21,6 +21,14 @@ module.exports = {
       accounts: [
         MUMBAI_PRIVATE_KEY,
       ],
+      gas: 2100000,
+      gasPrice: 200000000000,
     },
+    // goerli: {
+    //   url: GOERLI_RPC_PROVIDER,
+    //   accounts: [GOERLI_PRIVATE_KEY],
+    //   // gas: 2100000,
+    //   // gasPrice: 200000000000,   
+    // }
   }
 };
