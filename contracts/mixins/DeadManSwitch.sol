@@ -2,43 +2,38 @@
 pragma solidity ^0.8.12;
 
 contract DeadManSwitch {
-    event LastOwnerTxBlock(uint256 blockNumber);
-    event SwitchAccountChanged(address account);
-    event SwitchTriggerBlockDiffChanged(uint256 diff);
+    event Switch(uint256 switchTriggerBlockDiff, address switchAccount);
+    event SwitchRequest(uint256 switchRequestBlockNumber);
 
-    uint256 public lastOwnerTxBlock;
+    uint256 public switchRequestBlockNumber;
     uint256 public switchTriggerBlockDiff;
     bool public switchActivated;
     address public switchAccount;
 
-    // jfkldsjflksdjfl
-
-    // modifier _onlyOwnerOrRecoveryAccount() {
-    //     require(
-    //         msg.sender == owner ||
-    //             msg.sender == address(this) ||
-    //             msg.sender == recoveryAccount,
-    //         "only owner"
-    //     );
-    //     _;
-    // }
-
-    // fhdsjkfhdskj
-
-    modifier _switchActivated() {
+    modifier ifSwitchActivated() {
         require(switchActivated);
         _;
     }
 
-    modifier _switchNotActivated() {
+    modifier ifSwitchNotActivated() {
         require(!switchActivated);
         _;
+    }
+
+    modifier onlySwitchAccount() {
+        _onlySwitchAccount();
+        _;
+    }
+
+    function _onlySwitchAccount() internal view {
+        //directly from EOA owner, or through the entryPoint (which gets redirected through execFromEntryPoint)
+        require(msg.sender == switchAccount && msg.sender == address(this), "only switch account");
     }
 
     modifier _canSwitchActivate() {
         require(!switchActivated);
         require(
-            (block.number - lastOwnerTxBlock) >= switchTriggerBlockDiff,
+            (block.number - switchRequestBlockNumber) >= switchTriggerBlockDiff,
             "cannot activate switch"
         );
         _;
@@ -48,23 +43,14 @@ contract DeadManSwitch {
         switchActivated = true;
     }
 
-    function _setSwitchAccount(address account) internal {
-        switchAccount = account;
-        emit SwitchAccountChanged(account);
-    }
-
-    function _setSwitchTriggerBlockDiff(uint256 diff) internal {
-        switchTriggerBlockDiff = diff;
-        emit SwitchTriggerBlockDiffChanged(diff);
-    }
-
     function _setSwitch(address account, uint256 diff) internal {
-        _setSwitchAccount(account);
-        _setSwitchTriggerBlockDiff(diff);
+        switchAccount = account;
+        switchTriggerBlockDiff = diff;
+        emit Switch(switchTriggerBlockDiff, switchAccount);
     }
 
-    function _setLastOwnerTxBlock() internal {
-        lastOwnerTxBlock = block.number;
-        emit LastOwnerTxBlock(lastOwnerTxBlock);
+    function _setSwitchRequest() internal {
+        switchRequestBlockNumber = block.number;
+        emit SwitchRequest(switchRequestBlockNumber);
     }
 }

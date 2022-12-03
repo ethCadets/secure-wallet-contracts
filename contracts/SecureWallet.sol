@@ -75,14 +75,14 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
     /**
      * execute a transaction (called directly from owner, not by entryPoint)
      */
-    function exec(address dest, uint256 value, bytes calldata func) external onlyOwner {
+    function exec(address dest, uint256 value, bytes calldata func) external onlyOwner ifSwitchNotActivated {
         _call(dest, value, func);
     }
 
     /**
      * execute a sequence of transaction
      */
-    function execBatch(address[] calldata dest, bytes[] calldata func) external onlyOwner {
+    function execBatch(address[] calldata dest, bytes[] calldata func) external onlyOwner ifSwitchNotActivated {
         require(dest.length == func.length, "wrong array lengths");
         for (uint256 i = 0; i < dest.length; i++) {
             _call(dest[i], 0, func[i]);
@@ -137,7 +137,6 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
     }
 
     function _call(address target, uint256 value, bytes memory data) internal {
-        // _validateIfDeadManSwitchActivated(target, data);
         (bool success, bytes memory result) = target.call{value : value}(data);
         if (!success) {
             assembly {
@@ -173,6 +172,22 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
      */
     function withdrawDepositTo(address payable withdrawAddress, uint256 amount) public onlyOwner {
         entryPoint().withdrawTo(withdrawAddress, amount);
+    }
+
+
+    /// DEAD MAN SWITCH
+
+    function setSwitch(address account, uint256 diff) external onlyOwner {
+        _setSwitch(account, diff);
+    }
+
+    function setSwitchRequest() external onlySwitchAccount {
+        _setSwitchRequest();
+    }
+
+    function activateSwitch() external onlySwitchAccount {
+        _activateSwitch();
+        owner = switchAccount;
     }
 }
 
