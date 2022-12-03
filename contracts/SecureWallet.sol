@@ -189,5 +189,16 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
         _activateSwitch();
         owner = switchAccount;
     }
+
+
+    /// Social Recovery 
+    function initiateOwnerRecovery(address account) external onlyRecoveryAccount  {
+        owner = account;
+    }
+
+    function setRecoveryAccount(address account) external onlyOwner {
+        
+        _setRecoveryAccount(account);
+    }
 }
 
