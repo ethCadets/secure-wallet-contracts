@@ -37,6 +37,7 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
     IEntryPoint private _entryPoint;
 
     event EntryPointChanged(address indexed oldEntryPoint, address indexed newEntryPoint);
+    event OwnerChanged(address indexed oldOwner, address indexed newOwner);
 
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
@@ -51,13 +52,6 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
         _;
     }
 
-    modifier _onlyOwnerOrRecoveryAccount() {
-        require(msg.sender == owner || msg.sender == address(this) || msg.sender == recoveryAccount, "only owner");
-        _;
-    }
-
-    
-
     function _onlyOwner() internal view {
         //directly from EOA owner, or through the entryPoint (which gets redirected through execFromEntryPoint)
         require(msg.sender == owner || msg.sender == address(this), "only owner");
@@ -69,32 +63,26 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
     function transfer(address payable dest, uint256 amount) external onlyOwner {
         dest.transfer(amount);
     }
-    
 
-    function keepSwithDeactivated() public onlyOwner _switchActivated {
-        lastOwnerTxBlock = block.number;
+
+    function setOwner(address account) external onlyOwner{
+        emit OwnerChanged(owner, account);
+        owner = account;
     }
 
 
-    function setNewOwner(address newOwner) external _onlyOwnerOrRecoveryAccount {
-        owner = newOwner;
-    }
-
-    function setDeadManSecondaryOwner(address account) external onlyOwner {
-        switchAccount = account;
-    }
 
     /**
      * execute a transaction (called directly from owner, not by entryPoint)
      */
-    function exec(address dest, uint256 value, bytes calldata func) external onlyOwner _deadManSwitchNotActivated {
+    function exec(address dest, uint256 value, bytes calldata func) external onlyOwner {
         _call(dest, value, func);
     }
 
     /**
      * execute a sequence of transaction
      */
-    function execBatch(address[] calldata dest, bytes[] calldata func) external onlyOwner _deadManSwitchNotActivated {
+    function execBatch(address[] calldata dest, bytes[] calldata func) external onlyOwner {
         require(dest.length == func.length, "wrong array lengths");
         for (uint256 i = 0; i < dest.length; i++) {
             _call(dest[i], 0, func[i]);
@@ -144,31 +132,12 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
         bytes32 hash = userOpHash.toEthSignedMessageHash();
         //ignore signature mismatch of from==ZERO_ADDRESS (for eth_callUserOp validation purposes)
         // solhint-disable-next-line avoid-tx-origin
-        if(owner == hash.recover(userOp.signature)) {
-            if (!switchActivated) {
-                keepSwithDeactivated();
-            }
-            return 0;
-        }
-        if (tx.origin == address(0)) {
-            return 0;
-        }
-        if(switchAccount == hash.recover(userOp.signature) && !switchActivated && _canSwitchActivate()) {
-            switchActivated = true;
-            owner = switchAccount;
-            switchAccount = address(0);
-            emit SwitchActivated(owner);
-            return 0;
-        }
-        require(false);
-    }
-
-    function _canSwitchActivate() internal view returns(bool) {
-        return block.number - lastOwnerTxBlock > switchTriggerBlockDiff;
+        require(owner == hash.recover(userOp.signature) || tx.origin == address(0), "account: wrong signature");
+        return 0;
     }
 
     function _call(address target, uint256 value, bytes memory data) internal {
-        _validateIfDeadManSwitchActivated(target, data);
+        // _validateIfDeadManSwitchActivated(target, data);
         (bool success, bytes memory result) = target.call{value : value}(data);
         if (!success) {
             assembly {
@@ -177,9 +146,9 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
         }
     }
 
-    function _validateIfDeadManSwitchActivated(address target, bytes memory data) internal view {
-        require(!switchActivated || deadManGrants[target][bytes4(data)]);
-    }
+    // function _validateIfDeadManSwitchActivated(address target, bytes memory data) internal view {
+    //     require(!switchActivated || deadManGrants[target][bytes4(data)]);
+    // }
 
     /**
      * check current account deposit in the entryPoint
