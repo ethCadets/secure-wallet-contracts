@@ -17,7 +17,7 @@ import "./mixins/AccessGrants.sol";
  *  has execute, eth handling methods
  *  has a single signer that can send requests through the entryPoint.
  */
-contract SocialAccount is
+contract InfinityAccount is
     BaseAccount,
     DeadManSwitch,
     SocialRecovery,
