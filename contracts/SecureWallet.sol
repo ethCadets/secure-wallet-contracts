@@ -9,7 +9,7 @@ import "@account-abstraction/contracts/core/BaseAccount.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./mixins/DeadManSwitch.sol";
 import "./mixins/SocialRecovery.sol";
-import "./mixins/AccessGrants.sol";
+import "./mixins/SessionManagement.sol";
 
 /**
  * minimal account.
@@ -17,12 +17,7 @@ import "./mixins/AccessGrants.sol";
  *  has execute, eth handling methods
  *  has a single signer that can send requests through the entryPoint.
  */
-contract InfinityAccount is
-    BaseAccount,
-    DeadManSwitch,
-    SocialRecovery,
-    AccessGrants
-{
+contract InfinityAccount is BaseAccount, DeadManSwitch, SocialRecovery, SessionManagement {
     using ECDSA for bytes32;
 
     //explicit sizes of nonce, to fit a single storage cell with "owner"
@@ -48,7 +43,7 @@ contract InfinityAccount is
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    constructor(IEntryPoint anEntryPoint, address anOwner) {
+    constructor(IEntryPoint anEntryPoint, address anOwner) DeadManSwitch() {
         _entryPoint = anEntryPoint;
         owner = anOwner;
     }
@@ -160,7 +155,7 @@ contract InfinityAccount is
         //ignore signature mismatch of from==ZERO_ADDRESS (for eth_callUserOp validation purposes)
         // solhint-disable-next-line avoid-tx-origin
         require(
-            owner == hash.recover(userOp.signature) || tx.origin == address(0),
+            owner == hash.recover(userOp.signature) || tx.origin == address(0) || _canCall(hash.recover(userOp.signature), address(bytes20(userOp.callData))),
             "account: wrong signature"
         );
         return 0;
@@ -222,6 +217,10 @@ contract InfinityAccount is
         owner = switchAccount;
     }
 
+    function rejectSwitchRequest() external onlyOwner {
+        _rejectSwitchRequest();
+    }
+
     /// Social Recovery
     function initiateOwnerRecovery(address account)
         external
@@ -234,4 +233,16 @@ contract InfinityAccount is
     function setRecoveryAccount(address account) external onlyOwner {
         _setRecoveryAccount(account);
     }
+
+    // Session Management
+
+    function createSession(address sessionAddress, address target, uint256 blockNumber) external {
+        _createSession(blockNumber, target, sessionAddress);
+    }
+
+
+    function deactivateSession(address sessionAddress) external {
+        _deactivateSession(sessionAddress);
+    }
 }
+

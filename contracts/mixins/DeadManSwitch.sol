@@ -10,6 +10,12 @@ contract DeadManSwitch {
     bool public switchActivated;
     address public switchAccount;
 
+    constructor() {
+        switchRequestBlockNumber = ~uint256(0);
+    }
+
+
+
     modifier ifSwitchActivated() {
         require(switchActivated);
         _;
@@ -52,5 +58,9 @@ contract DeadManSwitch {
     function _setSwitchRequest() internal {
         switchRequestBlockNumber = block.number;
         emit SwitchRequest(switchRequestBlockNumber);
+    }
+
+    function _rejectSwitchRequest() internal {
+        switchRequestBlockNumber = ~uint256(0);
     }
 }
