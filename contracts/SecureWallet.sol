@@ -11,20 +11,23 @@ import "./mixins/DeadManSwitch.sol";
 import "./mixins/SocialRecovery.sol";
 import "./mixins/AccessGrants.sol";
 
-
 /**
-  * minimal account.
-  *  this is sample minimal account.
-  *  has execute, eth handling methods
-  *  has a single signer that can send requests through the entryPoint.
-  */
-contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGrants {
+ * minimal account.
+ *  this is sample minimal account.
+ *  has execute, eth handling methods
+ *  has a single signer that can send requests through the entryPoint.
+ */
+contract SocialAccount is
+    BaseAccount,
+    DeadManSwitch,
+    SocialRecovery,
+    AccessGrants
+{
     using ECDSA for bytes32;
 
     //explicit sizes of nonce, to fit a single storage cell with "owner"
     uint96 private _nonce;
-    address public owner;    
-
+    address public owner;
 
     function nonce() public view virtual override returns (uint256) {
         return _nonce;
@@ -36,7 +39,10 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
 
     IEntryPoint private _entryPoint;
 
-    event EntryPointChanged(address indexed oldEntryPoint, address indexed newEntryPoint);
+    event EntryPointChanged(
+        address indexed oldEntryPoint,
+        address indexed newEntryPoint
+    );
     event OwnerChanged(address indexed oldOwner, address indexed newOwner);
 
     // solhint-disable-next-line no-empty-blocks
@@ -54,7 +60,10 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
 
     function _onlyOwner() internal view {
         //directly from EOA owner, or through the entryPoint (which gets redirected through execFromEntryPoint)
-        require(msg.sender == owner || msg.sender == address(this), "only owner");
+        require(
+            msg.sender == owner || msg.sender == address(this),
+            "only owner"
+        );
     }
 
     /**
@@ -64,25 +73,30 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
         dest.transfer(amount);
     }
 
-
-    function setOwner(address account) external onlyOwner{
+    function setOwner(address account) external onlyOwner {
         emit OwnerChanged(owner, account);
         owner = account;
     }
 
-
-
     /**
      * execute a transaction (called directly from owner, not by entryPoint)
      */
-    function exec(address dest, uint256 value, bytes calldata func) external onlyOwner ifSwitchNotActivated {
+    function exec(
+        address dest,
+        uint256 value,
+        bytes calldata func
+    ) external onlyOwner ifSwitchNotActivated {
         _call(dest, value, func);
     }
 
     /**
      * execute a sequence of transaction
      */
-    function execBatch(address[] calldata dest, bytes[] calldata func) external onlyOwner ifSwitchNotActivated {
+    function execBatch(address[] calldata dest, bytes[] calldata func)
+        external
+        onlyOwner
+        ifSwitchNotActivated
+    {
         require(dest.length == func.length, "wrong array lengths");
         for (uint256 i = 0; i < dest.length; i++) {
             _call(dest[i], 0, func[i]);
@@ -111,43 +125,59 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
      * - validate current nonce matches request nonce, and increment it.
      * - pay prefund, in case current deposit is not enough
      */
-    function _requireFromEntryPoint() internal override view {
-        require(msg.sender == address(entryPoint()), "account: not from EntryPoint");
+    function _requireFromEntryPoint() internal view override {
+        require(
+            msg.sender == address(entryPoint()),
+            "account: not from EntryPoint"
+        );
     }
 
     // called by entryPoint, only after validateUserOp succeeded.
-    function execFromEntryPoint(address dest, uint256 value, bytes calldata func) external {
+    function execFromEntryPoint(
+        address dest,
+        uint256 value,
+        bytes calldata func
+    ) external {
         _requireFromEntryPoint();
         _call(dest, value, func);
     }
 
     /// implement template method of BaseAccount
-    function _validateAndUpdateNonce(UserOperation calldata userOp) internal override {
+    function _validateAndUpdateNonce(UserOperation calldata userOp)
+        internal
+        override
+    {
         require(_nonce++ == userOp.nonce, "account: invalid nonce");
     }
 
     /// implement template method of BaseAccount
-    function _validateSignature(UserOperation calldata userOp, bytes32 userOpHash, address aggregator)
-    internal override virtual returns (uint256 deadline) {
+    function _validateSignature(
+        UserOperation calldata userOp,
+        bytes32 userOpHash,
+        address aggregator
+    ) internal virtual override returns (uint256 deadline) {
         bytes32 hash = userOpHash.toEthSignedMessageHash();
         //ignore signature mismatch of from==ZERO_ADDRESS (for eth_callUserOp validation purposes)
         // solhint-disable-next-line avoid-tx-origin
-        require(owner == hash.recover(userOp.signature) || tx.origin == address(0), "account: wrong signature");
+        require(
+            owner == hash.recover(userOp.signature) || tx.origin == address(0),
+            "account: wrong signature"
+        );
         return 0;
     }
 
-    function _call(address target, uint256 value, bytes memory data) internal {
-        (bool success, bytes memory result) = target.call{value : value}(data);
+    function _call(
+        address target,
+        uint256 value,
+        bytes memory data
+    ) internal {
+        (bool success, bytes memory result) = target.call{value: value}(data);
         if (!success) {
             assembly {
                 revert(add(result, 32), mload(result))
             }
         }
     }
-
-    // function _validateIfDeadManSwitchActivated(address target, bytes memory data) internal view {
-    //     require(!switchActivated || deadManGrants[target][bytes4(data)]);
-    // }
 
     /**
      * check current account deposit in the entryPoint
@@ -160,8 +190,7 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
      * deposit more funds for this account in the entryPoint
      */
     function addDeposit() public payable {
-
-        (bool req,) = address(entryPoint()).call{value : msg.value}("");
+        (bool req, ) = address(entryPoint()).call{value: msg.value}("");
         require(req);
     }
 
@@ -170,10 +199,12 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
      * @param withdrawAddress target to send to
      * @param amount to withdraw
      */
-    function withdrawDepositTo(address payable withdrawAddress, uint256 amount) public onlyOwner {
+    function withdrawDepositTo(address payable withdrawAddress, uint256 amount)
+        public
+        onlyOwner
+    {
         entryPoint().withdrawTo(withdrawAddress, amount);
     }
-
 
     /// DEAD MAN SWITCH
 
@@ -187,18 +218,20 @@ contract SocialAccount is BaseAccount, DeadManSwitch, SocialRecovery, AccessGran
 
     function activateSwitch() external onlySwitchAccount {
         _activateSwitch();
+        emit OwnerChanged(owner, switchAccount);
         owner = switchAccount;
     }
 
-
-    /// Social Recovery 
-    function initiateOwnerRecovery(address account) external onlyRecoveryAccount  {
+    /// Social Recovery
+    function initiateOwnerRecovery(address account)
+        external
+        onlyRecoveryAccount
+    {
+        emit OwnerChanged(owner, account);
         owner = account;
     }
 
     function setRecoveryAccount(address account) external onlyOwner {
-        
         _setRecoveryAccount(account);
     }
 }
-
