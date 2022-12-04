@@ -35,7 +35,7 @@ async function main() {
 
 
 
-  await walletProxy.initiate()
+//   await walletProxy.initiate()
 
 }
 

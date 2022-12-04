@@ -55,11 +55,11 @@ contract InfinityWallet is
         // _disableInitializers();
     }
 
-    function initialize(IEntryPoint anEntryPoint, address anOwner)
+    function initialize(address anEntryPoint, address anOwner)
         public
         initializer
     {
-        _entryPoint = anEntryPoint;
+        _entryPoint = IEntryPoint(anEntryPoint);
         owner = anOwner;
         DeadManSwitch__init();
     }

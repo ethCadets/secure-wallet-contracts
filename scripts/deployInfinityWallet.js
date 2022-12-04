@@ -64,14 +64,14 @@ async function main() {
 
   let userOperation = {
     'sender': newProxyAddress,
-    'nonce': 0,
+    'nonce': 1,
     'callData': '0x',
     'initCode': initCode,
-    'callGasLimit': 100000000,
-    'verificationGasLimit': 110000000,
-    'preVerificationGas': 12000000,
-    'maxFeePerGas': 12000000000,
-    'maxPriorityFeePerGas': 12000000000,
+    'callGasLimit': 10e6,
+    'verificationGasLimit': 11e6,
+    'preVerificationGas': 12e6,
+    'maxFeePerGas': 12e9,
+    'maxPriorityFeePerGas': 12e9,
     "paymasterAndData": '0x',
     'signature': undefined
   };
@@ -79,13 +79,11 @@ async function main() {
   userOperation.signature = await signUserOp(
     userOperation,
     entryPoint.address,
-    80001,
+    5,
     owner
   );
 
-  await entryPoint.handleOps([userOperation], owner.address, {
-    gasLimit: 12000000000,
-  });
+  await entryPoint.handleOps([userOperation], owner.address);
 
 }
 

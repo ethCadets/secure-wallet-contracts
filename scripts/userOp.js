@@ -62,10 +62,10 @@ function packUserOp(op, forSignature = true) {
 
 function getRequestId(op, entryPointAddress, chainId) {
     const userOpHash = keccak256(packUserOp(op, true))
-    console.log(userOpHash, entryPointAddress, 80001)
+    console.log(userOpHash, entryPointAddress, chainId)
     const enc = defaultAbiCoder.encode(
         ['bytes32', 'address', 'uint256'],
-        [userOpHash, entryPointAddress, 80001])
+        [userOpHash, entryPointAddress, chainId])
     return keccak256(enc)
 }
 
